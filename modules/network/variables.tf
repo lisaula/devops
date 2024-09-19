@@ -1,0 +1,12 @@
+variable "cluster_name" {}
+variable "region" {}
+variable "aws_cidr" {}
+variable "private_subnet_1a" {}
+variable "private_subnet_1b" {}
+variable "private_subnet_1c" {}
+variable "public_subnet_1a" {}
+variable "public_subnet_1b" {}
+variable "public_subnet_1c" {}
+variable "region_1_a" {}
+variable "region_1_b" {}
+variable "region_1_c" {}

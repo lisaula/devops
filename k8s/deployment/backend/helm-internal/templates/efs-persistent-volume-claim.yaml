@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: efs-claim-{{ .Values.appName }}
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: efs-sc
+  volumeName: efs-persistent-volume-{{ .Values.environment }}-{{ .Values.appName }}
+  resources:
+    requests:
+      storage: {{ .Values.efsSize }}

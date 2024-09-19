@@ -1,0 +1,58 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ .Values.appName }}
+  namespace : {{ .Values.namespace }}
+  annotations:
+    kubernetes.io/ingress.class: {{ .Values.ingressClass }}
+    # Not Chatty? Then normal load balancer naming conventions.
+    {{- if ne .Values.appName "chatty" }}
+    alb.ingress.kubernetes.io/load-balancer-name: {{ .Values.appName }}-{{ .Values.environment }}
+    alb.ingress.kubernetes.io/group.name: {{ .Values.appName }}-{{ .Values.environment }}.eks-group
+    # Chatty uses the `api` app's load balancer.
+    {{- else }}
+    alb.ingress.kubernetes.io/load-balancer-name: api-{{ .Values.environment }}
+    alb.ingress.kubernetes.io/group.name: api-{{ .Values.environment }}.eks-group
+    {{- end }}
+    alb.ingress.kubernetes.io/scheme: {{ .Values.ingressScheme }}
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/tags: environment={{ .Values.environment }}
+    alb.ingress.kubernetes.io/certificate-arn: {{ .Values.awsACM }}
+    # Not Chatty? Then normal ports.
+    {{- if ne .Values.appName "chatty" }}
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443},{"HTTP":80}]'
+    # Chatty listens on 9999.
+    {{- else }}
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS": 9999}]'
+    {{- end }}
+    alb.ingress.kubernetes.io/actions.ssl-redirect: '{"Type": "redirect", "RedirectConfig": { "Protocol": "HTTPS", "Port": "443", "StatusCode": "HTTP_301"}}'
+    # Health Check Settings
+    alb.ingress.kubernetes.io/healthcheck-protocol: HTTP
+    alb.ingress.kubernetes.io/healthcheck-port: traffic-port
+    alb.ingress.kubernetes.io/healthcheck-path: {{ .Values.healthcheckPath }}
+    alb.ingress.kubernetes.io/healthcheck-interval-seconds: '15'
+    alb.ingress.kubernetes.io/healthcheck-timeout-seconds: '5'
+    alb.ingress.kubernetes.io/success-codes: '200'
+    alb.ingress.kubernetes.io/healthy-threshold-count: '2'
+    alb.ingress.kubernetes.io/unhealthy-threshold-count: '2'
+spec:
+  rules:
+    - host: {{ .Values.host }}
+      http:
+        paths:
+          {{- if ne .Values.appName "chatty" }}
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: ssl-redirect
+                port:
+                  name: use-annotation
+          {{- end }}
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Values.appName }}
+                port:
+                  number: {{ .Values.servicePort }}

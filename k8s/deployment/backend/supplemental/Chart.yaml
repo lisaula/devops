@@ -1,0 +1,5 @@
+name:
+apiVersion: v2
+description: Extra manifests for provisioning the platform
+type: application
+version:

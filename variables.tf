@@ -1,0 +1,27 @@
+variable "cluster_name" {}
+variable "region" {}
+variable "region_1_a" {}
+variable "region_1_b" {}
+variable "region_1_c" {}
+variable "profile" {}
+variable "aws_cidr" {}
+variable "kubernetes_version" {}
+variable "private_subnet_1a" {}
+variable "private_subnet_1b" {}
+variable "private_subnet_1c" {}
+variable "public_subnet_1a" {}
+variable "public_subnet_1b" {}
+variable "public_subnet_1c" {}
+variable "desired_size" {}
+variable "max_size" {}
+variable "min_size" {}
+variable "instance_types" {
+  type = list(string)
+}
+variable "ami_type" {}
+variable "size_disk" {}
+variable "master_username" {}
+variable "instance_types_vpn" {}
+variable "ami_id_vpn" {}
+variable "volume_type" {}
+variable "volume_size" {}

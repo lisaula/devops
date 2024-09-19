@@ -1,0 +1,62 @@
+name: Deploy to EKS
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+jobs:
+  build-and-push:
+    name: Build and deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
+
+      - name: Check out the DevOps repo
+        uses: actions/checkout@v3
+        with:
+          repository: purpleplatform/devops
+          token: ${{ secrets.GH_ORGANIZATION_TOKEN }}
+          path: devops
+
+      - name: Get the domain
+        id: domain
+        uses: mikefarah/yq@master
+        with:
+          cmd: >
+            yq ".__projects__.${{ github.event.repository.name }}.__branches__.${GITHUB_REF##*/}.domain"
+            'devops/project-branch-map.yaml'
+
+      - name: Clone devops repository and update helm
+        env:
+          NEXUS_REPO_URL: ${{ secrets.NEXUS_REPO_URL }}
+          NEXUS_USER: ${{ secrets.NEXUS_USER }}
+          NEXUS_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          AWS_ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          BUILD_ID: ${{ github.run_id }}
+          PROJECT_NAME: supplemental
+          DOMAIN: ${{ steps.domain.outputs.result }}
+
+        run: |
+          export IMAGE_TAG=1.0.0-${BUILD_ID}
+
+          helm plugin install --version master https://github.com/sonatype-nexus-community/helm-nexus-push.git
+          helm repo add eks $NEXUS_REPO_URL --username $NEXUS_USER --password $NEXUS_PASSWORD
+
+          cp -r devops/k8s/deployment/backend/supplemental ${PROJECT_NAME}-helm
+
+          export HELM_CHART_NAME=${PROJECT_NAME}-helm
+
+          yq -i '
+            .name = strenv(HELM_CHART_NAME) |
+            .version = strenv(IMAGE_TAG)
+          ' ${PROJECT_NAME}-helm/Chart.yaml
+
+          yq -i '
+            .domain = strenv(DOMAIN)
+          ' ${PROJECT_NAME}-helm/values.yaml
+
+          helm package ${PROJECT_NAME}-helm
+          helm nexus-push eks ${PROJECT_NAME}-helm-${IMAGE_TAG}.tgz -u $NEXUS_USER -p $NEXUS_PASSWORD

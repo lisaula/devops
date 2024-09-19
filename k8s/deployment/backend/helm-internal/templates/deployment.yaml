@@ -1,0 +1,96 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name:  {{ .Values.appName }}
+  namespace: {{ .Values.namespace }}
+spec:
+  revisionHistoryLimit: 0
+  replicas: {{ .Values.minReplicas }}
+  selector:
+    matchLabels:
+      app:  {{ .Values.appName }}
+  template:
+    metadata:
+      labels:
+        app:  {{ .Values.appName }}
+    spec:
+      containers:
+      - name:  {{ .Values.appName }}
+        image: {{ .Values.awsEcrArtifactUrl }}
+        imagePullPolicy: Always
+        env:
+        - name: K8S
+          value: "1"
+        - name: K8S_ENVIRONMENT
+          value: {{ .Values.environment }}
+        - name: K8S_REQUESTS_CPU
+          valueFrom:
+            resourceFieldRef:
+              containerName: {{ .Values.appName }}
+              resource: requests.cpu
+        - name: K8S_LIMITS_CPU
+          valueFrom:
+            resourceFieldRef:
+              containerName: {{ .Values.appName }}
+              resource: limits.cpu
+        - name: K8S_REQUESTS_MEMORY
+          valueFrom:
+            resourceFieldRef:
+              containerName: {{ .Values.appName }}
+              resource: requests.memory
+        - name: K8S_LIMITS_MEMORY
+          valueFrom:
+            resourceFieldRef:
+              containerName: {{ .Values.appName }}
+              resource: limits.memory
+        # So yeah, I got screwed by this: https://github.com/helm/helm/issues/4262. Hence the `quote` pipe.
+        {{- range $item := .Values.env }}
+        - name: {{ $item.name | quote }}
+          {{- if $item.value }}
+          value: {{ $item.value | quote }}
+          {{- else if (($item.valueFrom).secretKeyRef) }}
+          {{- with $item.valueFrom.secretKeyRef }}
+          valueFrom:
+            secretKeyRef:
+              name: {{ .name | quote }}
+              key: {{ .key | quote }}
+              optional: {{ .optional }}
+          {{- end }}
+          {{- else if (($item.valueFrom).fieldRef) }}
+          {{- with $item.valueFrom.fieldRef }}
+          valueFrom:
+            fieldRef:
+              fieldPath: {{ .fieldPath }}
+          {{- end }}
+          {{- else if (($item.valueFrom).configMapKeyRef) }}
+          {{- with $item.valueFrom.configMapKeyRef }}
+          valueFrom:
+            configMapKeyRef:
+              name: {{ .name | quote }}
+              key: {{ .key | quote }}
+          {{- end }}
+          {{- end }}
+        {{- end }}
+        resources:
+          requests:
+            memory: {{ .Values.requestsMemory }}
+            cpu: {{ .Values.requestsCpu }}
+          limits:
+            memory: {{ .Values.limitsMemory }}
+            cpu: {{ .Values.limitsCpu }}
+        ports:
+        - containerPort: {{ .Values.containerPort }}
+        volumeMounts:
+        - name: persistent-storage
+          mountPath: /mnt/shared
+        # From https://stackoverflow.com/a/46434614. I have no fucking clue what's going on here.
+        - name: dshm
+          mountPath: /dev/shm
+      volumes:
+      - name: persistent-storage
+        persistentVolumeClaim:
+          claimName: efs-claim-{{ .Values.appName }}
+      # Ditto above comment.
+      - name: dshm
+        emptyDir:
+          medium: Memory

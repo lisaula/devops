@@ -1,0 +1,12 @@
+variable "master_username" {}
+variable "endpoint" {}
+variable "port" {}
+variable "environment" {}
+variable "cluster" {}
+variable "aws_rds_endpoint" {}
+variable "aws_rds_user" {}
+variable "aws_efs_target" {}
+variable "efs_id" {}
+variable "sap_id" {}
+variable "redis_endpoint" {}
+variable "redis_port" {}

@@ -1,0 +1,16 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: supplemental
+  namespace: argocd
+spec:
+  destination:
+    server: https://kubernetes.default.svc
+  project: default
+  source:
+    chart: supplemental-helm
+    repoURL: >-
+      http://nexus-nexus-repository-manager.nexus.svc.cluster.local:8081/repository/tla/
+    targetRevision: '>= 1.0.0-0'
+  syncPolicy:
+    automated: {}

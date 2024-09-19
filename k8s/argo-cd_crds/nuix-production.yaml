@@ -1,0 +1,17 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: nuix-production
+  namespace: argocd
+spec:
+  destination:
+    namespace: tla-production
+    server: https://kubernetes.default.svc
+  project: default
+  source:
+    chart: nuix-production-helm
+    repoURL: >-
+      http://nexus-nexus-repository-manager.nexus.svc.cluster.local:8081/repository/tla/
+    targetRevision: '>= 1.0.0-0'
+  syncPolicy:
+    automated: {}
